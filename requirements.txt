@@ -1,9 +1,10 @@
 streamlit
 torch
 torchvision
-torchgeometry
 numpy
 pillow
-opencv-python-headless
-torchvision
-jsonschema
+opencv-python
+torchgeometry
+scipy
+matplotlib
+tqdm
