@@ -1,33 +1,61 @@
 import streamlit as st
+import cv2
+import numpy as np
 from PIL import Image
-import os
+import torch
+from networks import SegGenerator, GMM, ALIASGenerator
+from utils import load_checkpoint, save_images
 
-st.title("👗 Virtual Try-On Demo")
+# Load models
+def load_models(opt):
+    seg = SegGenerator(opt, input_nc=opt.semantic_nc + 8, output_nc=opt.semantic_nc)
+    gmm = GMM(opt, inputA_nc=7, inputB_nc=3)
+    alias = ALIASGenerator(opt, input_nc=9)
 
-person_image = st.file_uploader("Upload Person Image", type=["jpg", "jpeg", "png"])
-cloth_image = st.file_uploader("Upload Cloth Image", type=["jpg", "jpeg", "png"])
+    load_checkpoint(seg, opt.seg_checkpoint)
+    load_checkpoint(gmm, opt.gmm_checkpoint)
+    load_checkpoint(alias, opt.alias_checkpoint)
 
-if st.button("Try-On") and person_image and cloth_image:
-    os.makedirs("datasets/test/image", exist_ok=True)
-    os.makedirs("datasets/test/cloth", exist_ok=True)
-    
-    person_path = "datasets/test/image/person.jpg"
-    cloth_path = "datasets/test/cloth/cloth.jpg"
-    
-    with open(person_path, "wb") as f:
-        f.write(person_image.read())
-    with open(cloth_path, "wb") as f:
-        f.write(cloth_image.read())
+    seg.eval()
+    gmm.eval()
+    alias.eval()
+    return seg, gmm, alias
 
-    with open("datasets/test/test_pairs.txt", "w") as f:
-        f.write("person.jpg cloth.jpg\n")
+# Function to process images
+def process_images(model, person_image, cloth_image):
+    # Preprocess images
+    # ...
 
-    st.text("Processing...")
-    os.system("python test.py")
+    # Perform inference
+    # ...
 
-    result_path = "results/test/person.jpg"
-    if os.path.exists(result_path):
-        result = Image.open(result_path)
-        st.image(result, caption="👕 Final Output")
-    else:
-        st.error("Result image not found.")
+    # Post-process and return result
+    # ...
+    return result_image
+
+# Streamlit interface
+st.title("Virtual Try-On Application")
+
+st.sidebar.header("Upload Images")
+person_file = st.sidebar.file_uploader("Upload Person Image", type=["jpg", "png"])
+cloth_file = st.sidebar.file_uploader("Upload Cloth Image", type=["jpg", "png"])
+
+if person_file and cloth_file:
+    person_image = Image.open(person_file)
+    cloth_image = Image.open(cloth_file)
+
+    st.image(person_image, caption="Person Image", use_column_width=True)
+    st.image(cloth_image, caption="Cloth Image", use_column_width=True)
+
+    if st.button("Try On"):
+        with st.spinner("Processing..."):
+            # Load models
+            opt = get_opt()  # Define this function based on your argument parsing
+            seg, gmm, alias = load_models(opt)
+
+            # Process images
+            result_image = process_images((seg, gmm, alias), person_image, cloth_image)
+
+            # Display result
+            st.image(result_image, caption="Result", use_column_width=True)
+            st.success("Done!")
