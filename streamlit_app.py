@@ -5,7 +5,9 @@ from PIL import Image
 import cv2
 import numpy as np
 from pathlib import Path
-from test import run_viton_hd  # Assuming test.py runs VITON-HD inference
+# from test import run_viton_hd  # Assuming test.py runs VITON-HD inference
+from viton_test import run_viton_hd
+
 
 # Set page title
 st.set_page_config(page_title="Virtual Try-On", layout="wide")
