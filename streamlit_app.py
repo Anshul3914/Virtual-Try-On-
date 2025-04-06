@@ -48,19 +48,30 @@ from argparse import Namespace
 
 from argparse import Namespace
 
+from argparse import Namespace
+
 def get_opt():
     return Namespace(
-        semantic_nc=13,  # Change according to your model
-        seg_checkpoint="checkpoints/seg_final.pth",
-        gmm_checkpoint="checkpoints/gmm_final.pth",
-        alias_checkpoint="checkpoints/alias_final.pth",
-        init_type="normal",
-        init_variance=0.02,
-        load_width=192,
-        load_height=256,
-        grid_size=5,  
-        num_upsampling_layers="more"  # Add this to fix the error
+        semantic_nc=13,  # Number of semantic classes
+        seg_checkpoint="checkpoints/seg_final.pth",  # Segmentation model checkpoint
+        gmm_checkpoint="checkpoints/gmm_final.pth",  # Geometric Matching Module checkpoint
+        alias_checkpoint="checkpoints/alias_final.pth",  # ALIAS generator checkpoint
+        init_type="normal",  # Initialization type for models
+        init_variance=0.02,  # Initialization variance
+        load_width=192,  # Input image width
+        load_height=256,  # Input image height
+        grid_size=5,  # Grid size for TPS transformation
+        num_upsampling_layers="more",  # ALIAS generator layers ("normal", "more", "most")
+        batch_size=1,  # Batch size for inference
+        dataroot="dataset",  # Dataset root
+        radius=5,  # Radius for pose visualization
+        workers=4,  # Number of worker threads
+        warp_feature=False,  # Whether to warp feature maps
+        use_dropout=False,  # Dropout in generator
+        norm_G="spectralaliasinstance",  # Generator normalization type
+        **ngf=64**  # ✅ Fixes the missing attribute issue
     )
+
 
 
 
