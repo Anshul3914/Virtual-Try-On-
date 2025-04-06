@@ -69,7 +69,7 @@ def get_opt():
         warp_feature=False,  # Whether to warp feature maps
         use_dropout=False,  # Dropout in generator
         norm_G="spectralaliasinstance",  # Generator normalization type
-        **ngf=64**  # ✅ Fixes the missing attribute issue
+        ngf=64  # ✅ Fixes the missing attribute issue
     )
 
 
