@@ -33,15 +33,17 @@ def download_models():
 download_models()
 
 # Function to define model options
+# Function to define model options
 def get_opt():
     return Namespace(
-        semantic_nc=13,  
-        seg_checkpoint=os.path.join(CHECKPOINT_DIR, "seg.pth"),
-        gmm_checkpoint=os.path.join(CHECKPOINT_DIR, "gmm.pth"),
-        alias_checkpoint=os.path.join(CHECKPOINT_DIR, "alias.pth"),
-        init_type="normal",
-        init_variance=0.02,
+        semantic_nc=13,  # Change according to your model
+        seg_checkpoint="checkpoints/seg_final.pth",  # Ensure correct filename
+        gmm_checkpoint="checkpoints/gmm_final.pth",
+        alias_checkpoint="checkpoints/alias_final.pth",
+        init_type="normal",  # Add this to avoid AttributeError
+        init_variance=0.02,  # Add this to avoid AttributeError
     )
+
 
 # Function to load models
 def load_models(opt):
