@@ -8,6 +8,15 @@ from networks import SegGenerator, GMM, ALIASGenerator
 from utils import load_checkpoint, save_images
 from argparse import Namespace
 
+
+import asyncio
+
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
+
 # Google Drive links for models
 MODEL_URLS = {
     "seg.pth": "https://drive.google.com/uc?id=1sxKGOa-OAOKyUBDnYKfXIGJiRkCX55AM",
