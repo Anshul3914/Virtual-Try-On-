@@ -56,6 +56,8 @@ def get_opt():
         seg_checkpoint="checkpoints/seg.pth",  # Segmentation model checkpoint
         gmm_checkpoint="checkpoints/gmm.pth",  # Geometric Matching Module checkpoint
         alias_checkpoint="checkpoints/alias.pth",  # ALIAS generator checkpoint
+        input_nc=192,
+        output_nc=3,
         init_type="normal",  # Initialization type for models
         init_variance=0.02,  # Initialization variance
         load_width=192,  # Input image width
