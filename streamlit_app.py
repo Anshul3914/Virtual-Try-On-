@@ -46,18 +46,22 @@ from argparse import Namespace
 
 from argparse import Namespace
 
+from argparse import Namespace
+
 def get_opt():
     return Namespace(
         semantic_nc=13,  # Change according to your model
-        seg_checkpoint="checkpoints/seg_final.pth",  # Ensure correct filename
+        seg_checkpoint="checkpoints/seg_final.pth",
         gmm_checkpoint="checkpoints/gmm_final.pth",
         alias_checkpoint="checkpoints/alias_final.pth",
-        init_type="normal",  # Add this to avoid AttributeError
-        init_variance=0.02,  # Add this to avoid AttributeError
-        load_width=192,  # Ensure proper dimensions
-        load_height=256,  # Add this to prevent AttributeError
-        grid_size=5,  # If required, add grid_size too
+        init_type="normal",
+        init_variance=0.02,
+        load_width=192,
+        load_height=256,
+        grid_size=5,  
+        num_upsampling_layers="more"  # Add this to fix the error
     )
+
 
 
 
