@@ -53,9 +53,9 @@ from argparse import Namespace
 def get_opt():
     return Namespace(
         semantic_nc=13,  # Number of semantic classes
-        seg_checkpoint="checkpoints/seg_final.pth",  # Segmentation model checkpoint
-        gmm_checkpoint="checkpoints/gmm_final.pth",  # Geometric Matching Module checkpoint
-        alias_checkpoint="checkpoints/alias_final.pth",  # ALIAS generator checkpoint
+        seg_checkpoint="checkpoints/seg.pth",  # Segmentation model checkpoint
+        gmm_checkpoint="checkpoints/gmm.pth",  # Geometric Matching Module checkpoint
+        alias_checkpoint="checkpoints/alias.pth",  # ALIAS generator checkpoint
         init_type="normal",  # Initialization type for models
         init_variance=0.02,  # Initialization variance
         load_width=192,  # Input image width
