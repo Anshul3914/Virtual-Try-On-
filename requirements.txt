@@ -9,3 +9,4 @@ scipy
 matplotlib
 tqdm
 jsonschema
+gdown
