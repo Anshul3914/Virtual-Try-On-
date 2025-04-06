@@ -44,11 +44,6 @@ download_models()
 # Function to define model options
 from argparse import Namespace
 
-from argparse import Namespace
-
-from argparse import Namespace
-
-from argparse import Namespace
 
 def get_opt():
     return Namespace(
@@ -76,6 +71,12 @@ def get_opt():
 
 
 
+def load_checkpoint(model, checkpoint_path):
+    if not os.path.exists(checkpoint_path):
+        raise ValueError(f"'{checkpoint_path}' is not a valid checkpoint path")
+    
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint, strict=False)  # ✅ Ignores size mismatches
 
 
 
