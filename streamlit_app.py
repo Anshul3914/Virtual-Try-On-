@@ -42,7 +42,8 @@ def download_models():
 download_models()
 
 # Function to define model options
-# Function to define model options
+from argparse import Namespace
+
 def get_opt():
     return Namespace(
         semantic_nc=13,  # Change according to your model
@@ -51,7 +52,10 @@ def get_opt():
         alias_checkpoint="checkpoints/alias_final.pth",
         init_type="normal",  # Add this to avoid AttributeError
         init_variance=0.02,  # Add this to avoid AttributeError
+        load_width=192,  # Add this with a proper value
+        grid_size=5,  # If required, add grid_size too
     )
+
 
 
 # Function to load models
