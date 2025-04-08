@@ -215,7 +215,7 @@ import gdown
 from PIL import Image
 from datasets import VITONDataset
 from networks import GMM, ALIASGenerator
-import test
+import test  # Import test.py correctly
 from utils import save_images
 
 # Google Drive links for pretrained models
@@ -243,8 +243,8 @@ def load_models():
     gmm = GMM()
     alias = ALIASGenerator()
     
-    gmm.load_state_dict(torch.load(os.path.join(CHECKPOINT_DIR, "gmm.pth")))
-    alias.load_state_dict(torch.load(os.path.join(CHECKPOINT_DIR, "alias.pth")))
+    gmm.load_state_dict(torch.load(os.path.join(CHECKPOINT_DIR, "gmm.pth"), map_location="cpu"))
+    alias.load_state_dict(torch.load(os.path.join(CHECKPOINT_DIR, "alias.pth"), map_location="cpu"))
     
     gmm.eval()
     alias.eval()
@@ -270,16 +270,26 @@ def main():
         st.image([person, cloth], caption=["Person Image", "Clothing Image"], width=250)
         
         if st.button("Generate Try-On Result"):
-            tester = VirtualTryOnTester(gmm, alias)
-            result = tester.run(person, cloth)
+            # Save user images temporarily
+            input_dir = "inputs"
+            os.makedirs(input_dir, exist_ok=True)
+            person_path = os.path.join(input_dir, "person.jpg")
+            cloth_path = os.path.join(input_dir, "cloth.jpg")
             
-            save_dir = "results"
-            os.makedirs(save_dir, exist_ok=True)
-            result_path = os.path.join(save_dir, "tryon_result.jpg")
-            save_images([result], ["tryon_result.jpg"], save_dir)
+            person.save(person_path)
+            cloth.save(cloth_path)
             
-            st.image(result_path, caption="Try-On Result", width=300)
-            st.success("Try-On completed successfully!")
+            # Run the try-on test script
+            test.run_tryon(person_path, cloth_path, gmm, alias)
+            
+            # Load and display result
+            result_path = "results/test/tryon.jpg"
+            if os.path.exists(result_path):
+                st.image(result_path, caption="Try-On Result", width=300)
+                st.success("Try-On completed successfully!")
+            else:
+                st.error("Failed to generate the try-on result. Check logs.")
 
 if __name__ == "__main__":
     main()
+
