@@ -215,8 +215,13 @@ import gdown
 from PIL import Image
 from datasets import VITONDataset
 from networks import GMM, ALIASGenerator
-import test  # Import test.py correctly
 from utils import save_images
+
+# Try importing VirtualTryOnTester
+try:
+    from test import VirtualTryOnTester
+except ImportError:
+    st.error("Error: 'VirtualTryOnTester' not found in test.py. Ensure it's properly defined.")
 
 # Google Drive links for pretrained models
 MODEL_URLS = {
@@ -240,15 +245,28 @@ def download_models():
 
 def load_models():
     """Load trained models for Virtual Try-On."""
-    gmm = GMM()
-    alias = ALIASGenerator()
+    # Define model configuration (update according to your project)
+    class Opt:
+        def __init__(self):
+            self.gpu_ids = []  # Empty list for CPU usage
+            self.semantic_nc = 13  # Number of semantic channels (modify if needed)
     
-    gmm.load_state_dict(torch.load(os.path.join(CHECKPOINT_DIR, "gmm.pth"), map_location="cpu"))
-    alias.load_state_dict(torch.load(os.path.join(CHECKPOINT_DIR, "alias.pth"), map_location="cpu"))
-    
+    opt = Opt()
+    inputA_nc = 3  # Number of channels for input A (RGB image)
+    inputB_nc = 3  # Number of channels for input B (clothing image)
+
+    # Initialize models with required parameters
+    gmm = GMM(opt, inputA_nc, inputB_nc)
+    alias = ALIASGenerator(opt, inputA_nc, inputB_nc)
+
+    # Load weights onto the correct device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    gmm.load_state_dict(torch.load(os.path.join(CHECKPOINT_DIR, "gmm.pth"), map_location=device))
+    alias.load_state_dict(torch.load(os.path.join(CHECKPOINT_DIR, "alias.pth"), map_location=device))
+
     gmm.eval()
     alias.eval()
-    
+
     return gmm, alias
 
 def main():
@@ -257,6 +275,12 @@ def main():
     
     # Download models first
     download_models()
+    
+    # Check if VirtualTryOnTester is available
+    if 'VirtualTryOnTester' not in globals():
+        st.error("Error: VirtualTryOnTester is missing. Please check test.py.")
+        return
+    
     gmm, alias = load_models()
     
     # File uploader for person & clothing images
@@ -270,26 +294,18 @@ def main():
         st.image([person, cloth], caption=["Person Image", "Clothing Image"], width=250)
         
         if st.button("Generate Try-On Result"):
-            # Save user images temporarily
-            input_dir = "inputs"
-            os.makedirs(input_dir, exist_ok=True)
-            person_path = os.path.join(input_dir, "person.jpg")
-            cloth_path = os.path.join(input_dir, "cloth.jpg")
+            tester = VirtualTryOnTester(gmm, alias)
+            result = tester.run(person, cloth)
             
-            person.save(person_path)
-            cloth.save(cloth_path)
+            save_dir = "results"
+            os.makedirs(save_dir, exist_ok=True)
+            result_path = os.path.join(save_dir, "tryon_result.jpg")
+            save_images([result], ["tryon_result.jpg"], save_dir)
             
-            # Run the try-on test script
-            test.run_tryon(person_path, cloth_path, gmm, alias)
-            
-            # Load and display result
-            result_path = "results/test/tryon.jpg"
-            if os.path.exists(result_path):
-                st.image(result_path, caption="Try-On Result", width=300)
-                st.success("Try-On completed successfully!")
-            else:
-                st.error("Failed to generate the try-on result. Check logs.")
+            st.image(result_path, caption="Try-On Result", width=300)
+            st.success("Try-On completed successfully!")
 
 if __name__ == "__main__":
     main()
+
 
