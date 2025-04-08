@@ -142,15 +142,16 @@
 # st.markdown("---")
 # st.markdown("👨‍💻 Developed using VITON-HD and Streamlit")
 
-
 import os
 import streamlit as st
-import gdown
 import torch
-from PIL import Image
+import gdown
 import numpy as np
+from PIL import Image
+from datasets import VITONDataset
+from test import VirtualTryOnTester
 from networks import GMM, ALIASGenerator
-from utils import load_checkpoint, save_images
+from utils import load_checkpoint
 
 # Google Drive links for models
 MODEL_URLS = {
@@ -174,63 +175,38 @@ def download_models():
 
 def load_models():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Load GMM model
     gmm = GMM()
-    load_checkpoint(gmm, os.path.join(CHECKPOINT_DIR, "gmm.pth"))
-    gmm.to(device).eval()
-    
-    # Load ALIAS Generator
     alias = ALIASGenerator()
+    load_checkpoint(gmm, os.path.join(CHECKPOINT_DIR, "gmm.pth"))
     load_checkpoint(alias, os.path.join(CHECKPOINT_DIR, "alias.pth"))
+    gmm.to(device).eval()
     alias.to(device).eval()
-    
-    return gmm, alias, device
+    return gmm, alias
 
-def process_virtual_tryon(person_img, cloth_img, gmm, alias, device):
-    st.info("Processing Virtual Try-On...")
-    # Convert images to tensors
-    person_tensor = torch.tensor(np.array(person_img)).float().permute(2, 0, 1) / 255.0
-    cloth_tensor = torch.tensor(np.array(cloth_img)).float().permute(2, 0, 1) / 255.0
-    
-    person_tensor = person_tensor.unsqueeze(0).to(device)
-    cloth_tensor = cloth_tensor.unsqueeze(0).to(device)
-    
-    # Run through the models
-    warped_cloth = gmm(person_tensor, cloth_tensor)
-    output_img = alias(person_tensor, warped_cloth)
-    
-    return output_img.squeeze(0).detach().cpu()
+# Streamlit UI
+st.title("Virtual Try-On")
+st.write("Upload a person image and clothing image to generate a virtual try-on.")
 
-def main():
-    st.title("👗 Virtual Try-On System")
-    st.write("Upload a person image and a clothing item to try on!")
+# File Upload
+person_image = st.file_uploader("Upload Person Image", type=["jpg", "png"])
+cloth_image = st.file_uploader("Upload Clothing Image", type=["jpg", "png"])
+
+if person_image and cloth_image:
+    st.image([person_image, cloth_image], caption=["Person", "Clothing"], width=200)
     
-    # Download models if not already present
-    download_models()
-    
-    # Load models
-    gmm, alias, device = load_models()
-    
-    # File uploader
-    person_file = st.file_uploader("Upload Person Image", type=["jpg", "png"])
-    cloth_file = st.file_uploader("Upload Clothing Image", type=["jpg", "png"])
-    
-    if person_file and cloth_file:
-        person_img = Image.open(person_file).convert("RGB")
-        cloth_img = Image.open(cloth_file).convert("RGB")
+    if st.button("Generate Try-On Image"):
+        st.info("Downloading models...")
+        download_models()
         
-        st.image([person_img, cloth_img], caption=["Person Image", "Clothing Image"], width=300)
+        st.info("Loading models...")
+        gmm, alias = load_models()
         
-        if st.button("Try On!"):
-            result = process_virtual_tryon(person_img, cloth_img, gmm, alias, device)
-            save_images([result], ["output.jpg"], "./results/")
-            st.image(result.permute(1, 2, 0).numpy(), caption="Result", width=300)
-
-if __name__ == "__main__":
-    main()
-
-
+        st.info("Running Virtual Try-On...")
+        tester = VirtualTryOnTester(gmm, alias)
+        output_img = tester.run(person_image, cloth_image)
+        
+        st.image(output_img, caption="Virtual Try-On Result", use_column_width=True)
+        st.success("Done!")
 # import os
 # import streamlit as st
 # import torch
