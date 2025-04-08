@@ -145,14 +145,14 @@
 
 import os
 import streamlit as st
-import torch
 import gdown
-import cv2
-import numpy as np
+import torch
 from PIL import Image
-from test import main as run_vton
+import numpy as np
+from networks import GMM, ALIASGenerator
+from utils import load_checkpoint, save_images
 
-# Google Drive links for pretrained models
+# Google Drive links for models
 MODEL_URLS = {
     "seg.pth": "https://drive.google.com/uc?id=1sxKGOa-OAOKyUBDnYKfXIGJiRkCX55AM",
     "gmm.pth": "https://drive.google.com/uc?id=1nUHGfNN9N8sbpj62H2Tc6_6w3nUpj5yy",
@@ -163,7 +163,6 @@ MODEL_URLS = {
 CHECKPOINT_DIR = "checkpoints"
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
-# Function to download models if not present
 def download_models():
     for model_name, url in MODEL_URLS.items():
         model_path = os.path.join(CHECKPOINT_DIR, model_name)
@@ -173,37 +172,126 @@ def download_models():
         else:
             st.success(f"{model_name} already exists.")
 
-def save_uploaded_file(uploaded_file, save_path):
-    with open(save_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    return save_path
-
-# Streamlit UI
-st.title("Virtual Try-On App")
-st.write("Upload an image of a person and a clothing item to generate a virtual try-on result.")
-
-# Download required models
-download_models()
-
-# Upload input images
-person_image = st.file_uploader("Upload Person Image", type=["jpg", "png"])
-cloth_image = st.file_uploader("Upload Clothing Image", type=["jpg", "png"])
-
-if person_image and cloth_image:
-    st.image([person_image, cloth_image], caption=["Person Image", "Clothing Image"], width=300)
+def load_models():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    person_path = save_uploaded_file(person_image, "datasets/test/person.jpg")
-    cloth_path = save_uploaded_file(cloth_image, "datasets/test/cloth.jpg")
+    # Load GMM model
+    gmm = GMM()
+    load_checkpoint(gmm, os.path.join(CHECKPOINT_DIR, "gmm.pth"))
+    gmm.to(device).eval()
     
-    # Run virtual try-on model
-    if st.button("Generate Try-On Image"):
-        st.info("Processing... Please wait.")
-        run_vton()  # Calls test.py
+    # Load ALIAS Generator
+    alias = ALIASGenerator()
+    load_checkpoint(alias, os.path.join(CHECKPOINT_DIR, "alias.pth"))
+    alias.to(device).eval()
+    
+    return gmm, alias, device
+
+def process_virtual_tryon(person_img, cloth_img, gmm, alias, device):
+    st.info("Processing Virtual Try-On...")
+    # Convert images to tensors
+    person_tensor = torch.tensor(np.array(person_img)).float().permute(2, 0, 1) / 255.0
+    cloth_tensor = torch.tensor(np.array(cloth_img)).float().permute(2, 0, 1) / 255.0
+    
+    person_tensor = person_tensor.unsqueeze(0).to(device)
+    cloth_tensor = cloth_tensor.unsqueeze(0).to(device)
+    
+    # Run through the models
+    warped_cloth = gmm(person_tensor, cloth_tensor)
+    output_img = alias(person_tensor, warped_cloth)
+    
+    return output_img.squeeze(0).detach().cpu()
+
+def main():
+    st.title("👗 Virtual Try-On System")
+    st.write("Upload a person image and a clothing item to try on!")
+    
+    # Download models if not already present
+    download_models()
+    
+    # Load models
+    gmm, alias, device = load_models()
+    
+    # File uploader
+    person_file = st.file_uploader("Upload Person Image", type=["jpg", "png"])
+    cloth_file = st.file_uploader("Upload Clothing Image", type=["jpg", "png"])
+    
+    if person_file and cloth_file:
+        person_img = Image.open(person_file).convert("RGB")
+        cloth_img = Image.open(cloth_file).convert("RGB")
         
-        # Show output
-        result_path = "results/test/tryon.jpg"
-        if os.path.exists(result_path):
-            st.image(result_path, caption="Try-On Result", use_column_width=True)
-        else:
-            st.error("Failed to generate try-on image. Please check the logs.")
+        st.image([person_img, cloth_img], caption=["Person Image", "Clothing Image"], width=300)
+        
+        if st.button("Try On!"):
+            result = process_virtual_tryon(person_img, cloth_img, gmm, alias, device)
+            save_images([result], ["output.jpg"], "./results/")
+            st.image(result.permute(1, 2, 0).numpy(), caption="Result", width=300)
+
+if __name__ == "__main__":
+    main()
+
+
+# import os
+# import streamlit as st
+# import torch
+# import gdown
+# import cv2
+# import numpy as np
+# from PIL import Image
+# from test import main as run_vton
+
+# # Google Drive links for pretrained models
+# MODEL_URLS = {
+#     "seg.pth": "https://drive.google.com/uc?id=1sxKGOa-OAOKyUBDnYKfXIGJiRkCX55AM",
+#     "gmm.pth": "https://drive.google.com/uc?id=1nUHGfNN9N8sbpj62H2Tc6_6w3nUpj5yy",
+#     "alias.pth": "https://drive.google.com/uc?id=1AeBGmF1aBeDbdm5SAIMU-_38KtxfRGI4",
+# }
+
+# # Directory to store models
+# CHECKPOINT_DIR = "checkpoints"
+# os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+
+# # Function to download models if not present
+# def download_models():
+#     for model_name, url in MODEL_URLS.items():
+#         model_path = os.path.join(CHECKPOINT_DIR, model_name)
+#         if not os.path.exists(model_path):
+#             st.info(f"Downloading {model_name}...")
+#             gdown.download(url, model_path, quiet=False)
+#         else:
+#             st.success(f"{model_name} already exists.")
+
+# def save_uploaded_file(uploaded_file, save_path):
+#     with open(save_path, "wb") as f:
+#         f.write(uploaded_file.getbuffer())
+#     return save_path
+
+# # Streamlit UI
+# st.title("Virtual Try-On App")
+# st.write("Upload an image of a person and a clothing item to generate a virtual try-on result.")
+
+# # Download required models
+# download_models()
+
+# # Upload input images
+# person_image = st.file_uploader("Upload Person Image", type=["jpg", "png"])
+# cloth_image = st.file_uploader("Upload Clothing Image", type=["jpg", "png"])
+
+# if person_image and cloth_image:
+#     st.image([person_image, cloth_image], caption=["Person Image", "Clothing Image"], width=300)
+    
+#     person_path = save_uploaded_file(person_image, "datasets/test/person.jpg")
+#     cloth_path = save_uploaded_file(cloth_image, "datasets/test/cloth.jpg")
+    
+#     # Run virtual try-on model
+#     if st.button("Generate Try-On Image"):
+#         st.info("Processing... Please wait.")
+#         run_vton()  # Calls test.py
+        
+#         # Show output
+#         result_path = "results/test/tryon.jpg"
+#         if os.path.exists(result_path):
+#             st.image(result_path, caption="Try-On Result", use_column_width=True)
+#         else:
+#             st.error("Failed to generate try-on image. Please check the logs.")
 
