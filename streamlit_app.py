@@ -309,61 +309,76 @@
 #     main()
 
 
+import os
 import streamlit as st
 import torch
+import gdown
 import numpy as np
 from PIL import Image
-import cv2
-import os
-from utils import load_checkpoint, save_images
-from test import run_test
+from datasets import VITONDataset
+from test import VirtualTryOnTester
+from networks import GMM, ALIASGenerator
+from utils import load_checkpoint
 
-# Load Pre-trained Model
-@st.cache_resource()
-def load_model(checkpoint_path):
-    model = torch.nn.Module()  # Placeholder, replace with actual model
-    load_checkpoint(model, checkpoint_path)
-    model.eval()
-    return model
+# Google Drive links for models
+MODEL_URLS = {
+    "seg.pth": "https://drive.google.com/uc?id=1sxKGOa-OAOKyUBDnYKfXIGJiRkCX55AM",
+    "gmm.pth": "https://drive.google.com/uc?id=1nUHGfNN9N8sbpj62H2Tc6_6w3nUpj5yy",
+    "alias.pth": "https://drive.google.com/uc?id=1AeBGmF1aBeDbdm5SAIMU-_38KtxfRGI4",
+}
+
+# Directory to store models
+CHECKPOINT_DIR = "checkpoints"
+os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+
+def download_models():
+    for model_name, url in MODEL_URLS.items():
+        model_path = os.path.join(CHECKPOINT_DIR, model_name)
+        if not os.path.exists(model_path):
+            st.info(f"Downloading {model_name}...")
+            gdown.download(url, model_path, quiet=False)
+        else:
+            st.success(f"{model_name} already exists.")
+
+def load_models(device):
+    gmm = GMM().to(device)
+    alias = ALIASGenerator().to(device)
+    load_checkpoint(gmm, os.path.join(CHECKPOINT_DIR, "gmm.pth"))
+    load_checkpoint(alias, os.path.join(CHECKPOINT_DIR, "alias.pth"))
+    gmm.eval()
+    alias.eval()
+    return gmm, alias
 
 # Streamlit UI
-st.title("👕 Virtual Try-On Application")
-st.write("Upload an image of a person and a clothing item to see how they look together.")
+st.title("Virtual Try-On")
+st.write("Upload a person image and clothing image to generate a virtual try-on.")
 
-# File Uploaders
-person_img = st.file_uploader("Upload Person Image", type=["jpg", "png"])
-cloth_img = st.file_uploader("Upload Clothing Image", type=["jpg", "png"])
+# File Upload
+person_image = st.file_uploader("Upload Person Image", type=["jpg", "png"])
+cloth_image = st.file_uploader("Upload Clothing Image", type=["jpg", "png"])
 
-if person_img and cloth_img:
-    person_image = Image.open(person_img).convert("RGB")
-    cloth_image = Image.open(cloth_img).convert("RGB")
+def preprocess_image(image_file):
+    image = Image.open(image_file).convert("RGB")
+    image = np.array(image)
+    return image
+
+if person_image and cloth_image:
+    person_np = preprocess_image(person_image)
+    cloth_np = preprocess_image(cloth_image)
+    st.image([person_np, cloth_np], caption=["Person", "Clothing"], width=200)
     
-    st.image([person_image, cloth_image], caption=["Person Image", "Clothing Image"], width=300)
+    if st.button("Generate Try-On Image"):
+        st.info("Downloading models...")
+        download_models()
+        
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        st.info("Loading models...")
+        gmm, alias = load_models(device)
+        
+        st.info("Running Virtual Try-On...")
+        tester = VirtualTryOnTester(gmm, alias, device)
+        output_img = tester.run(person_np, cloth_np)
+        
+        st.image(output_img, caption="Virtual Try-On Result", use_column_width=True)
+        st.success("Done!")
 
-    if st.button("Try On!"):
-        st.write("Processing... Please wait.")
-        
-        # Convert images to required format
-        person_np = np.array(person_image)
-        cloth_np = np.array(cloth_image)
-        
-        person_tensor = torch.from_numpy(person_np).permute(2, 0, 1).float() / 255
-        cloth_tensor = torch.from_numpy(cloth_np).permute(2, 0, 1).float() / 255
-        
-        # Model Inference
-        model = load_model("checkpoints/model.pth")
-        with torch.no_grad():
-            output_img = run_test(model, person_tensor, cloth_tensor)
-        
-        # Convert tensor to image
-        output_img = output_img.squeeze().permute(1, 2, 0).cpu().numpy()
-        output_img = (output_img * 255).astype(np.uint8)
-        output_pil = Image.fromarray(output_img)
-        
-        # Display result
-        st.image(output_pil, caption="Virtual Try-On Result", width=400)
-        
-        # Download Button
-        output_pil.save("virtual_tryon_result.jpg")
-        with open("virtual_tryon_result.jpg", "rb") as file:
-            st.download_button("Download Result", file, "virtual_tryon_result.jpg", "image/jpeg")
