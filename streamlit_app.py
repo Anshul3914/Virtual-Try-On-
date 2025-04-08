@@ -215,7 +215,7 @@ import gdown
 from PIL import Image
 from datasets import VITONDataset
 from networks import GMM, ALIASGenerator
-from test import VirtualTryOnTester
+import test
 from utils import save_images
 
 # Google Drive links for pretrained models
