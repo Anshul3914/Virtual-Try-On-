@@ -149,7 +149,7 @@ import gdown
 import numpy as np
 from PIL import Image
 from datasets import VITONDataset
-from test import VirtualTryOnTester
+from vition_test import VirtualTryOnTester
 from networks import GMM, ALIASGenerator
 from utils import load_checkpoint
 
@@ -207,6 +207,7 @@ if person_image and cloth_image:
         
         st.image(output_img, caption="Virtual Try-On Result", use_column_width=True)
         st.success("Done!")
+        
 # import os
 # import streamlit as st
 # import torch
